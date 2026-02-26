@@ -22,16 +22,18 @@ pipeline {
         stage('Deploy NGINX Load Balancer') {
             steps {
                 sh '''
+                # Remove the old container if it exists
                 docker rm -f nginx-lb || true
                 
+                # Build the custom NGINX image (uses local cache to bypass rate limits)
+                docker build -t custom-nginx-lb CC_LAB-6/nginx/
+                
+                # Run the load balancer using the new custom image
                 docker run -d \
                   --name nginx-lb \
                   --network app-network \
                   -p 80:80 \
-                  nginx
-                
-                docker cp CC_LAB-6/nginx/default.conf nginx-lb:/etc/nginx/conf.d/default.conf
-                docker exec nginx-lb nginx -s reload
+                  custom-nginx-lb
                 '''
             }
         }
