@@ -13,7 +13,10 @@ pipeline {
             steps {
                 sh '''
                 docker network create app-network || true
-                docker rm -f backend1 backend2 || true
+                # Remove containers individually to ensure both are cleared
+                docker rm -f backend1 || true
+                docker rm -f backend2 || true
+                
                 docker run -d --name backend1 --network app-network backend-app
                 docker run -d --name backend2 --network app-network backend-app
                 '''
@@ -22,13 +25,10 @@ pipeline {
         stage('Deploy NGINX Load Balancer') {
             steps {
                 sh '''
-                # Remove the old container if it exists
                 docker rm -f nginx-lb || true
-                
-                # Build the custom NGINX image (uses local cache to bypass rate limits)
+                # Build using your new Dockerfile in the nginx folder
                 docker build -t custom-nginx-lb CC_LAB-6/nginx/
                 
-                # Run the load balancer using the new custom image
                 docker run -d \
                   --name nginx-lb \
                   --network app-network \
@@ -40,10 +40,10 @@ pipeline {
     }
     post {
         success {
-            echo 'Pipeline executed successfully. NGINX load balancer is running.'
+            echo 'Pipeline executed successfully.'
         }
         failure {
-            echo 'Pipeline failed. Check console logs for errors.'
+            echo 'Pipeline failed. Check for naming conflicts or port issues.'
         }
     }
 }
