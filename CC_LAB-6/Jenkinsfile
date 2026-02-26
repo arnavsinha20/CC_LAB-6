@@ -13,10 +13,7 @@ pipeline {
             steps {
                 sh '''
                 docker network create app-network || true
-                # Remove containers individually to ensure both are cleared
-                docker rm -f backend1 || true
-                docker rm -f backend2 || true
-                
+                docker rm -f backend1 backend2 || true
                 docker run -d --name backend1 --network app-network backend-app
                 docker run -d --name backend2 --network app-network backend-app
                 '''
@@ -26,24 +23,25 @@ pipeline {
             steps {
                 sh '''
                 docker rm -f nginx-lb || true
-                # Build using your new Dockerfile in the nginx folder
-                docker build -t custom-nginx-lb CC_LAB-6/nginx/
                 
                 docker run -d \
                   --name nginx-lb \
                   --network app-network \
                   -p 80:80 \
-                  custom-nginx-lb
+                  nginx
+                
+                docker cp CC_LAB-6/nginx/default.conf nginx-lb:/etc/nginx/conf.d/default.conf
+                docker exec nginx-lb nginx -s reload
                 '''
             }
         }
     }
     post {
         success {
-            echo 'Pipeline executed successfully.'
+            echo 'Pipeline executed successfully. NGINX load balancer is running.'
         }
         failure {
-            echo 'Pipeline failed. Check for naming conflicts or port issues.'
+            echo 'Pipeline failed. Check console logs for errors.'
         }
     }
 }
